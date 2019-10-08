@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 /* Copy the parser function from here into your code
  * The functions executed are
@@ -161,7 +162,7 @@ int parser(char *command){
             else if(flag_out==2)
                 outfd = open(outfile, O_WRONLY|O_APPEND|O_CREAT);
             /////////////////////////////////////////////////////////////////////////////
-            execPipe(incomm, flag_in, infd, outcommm, flag_out, outfd, comm, count-1);
+            execPipe(incomm, flag_in, infd, outcomm, flag_out, outfd, comm, count-1);
             /////////////////////////////////////////////////////////////////////////////
            //printf("%s, %d, %d, %s, %d, %d, %d\n",incomm, flag_in, infd, outcomm, flag_out, outfd, count-1);
         }
