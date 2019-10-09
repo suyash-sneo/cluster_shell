@@ -126,6 +126,7 @@ int parser(char *command){
                 char* temp = (char*)malloc(strlen(token));
                 strcpy(temp, token);
                 incomm = temp;
+                infile = p+1;
             }
             int i=0;
             token = strtok(command2, "|");

@@ -1,4 +1,4 @@
-##include <stdio.h>
+#include <stdio.h>
 #include <unistd.h>                     
 #include <stdlib.h>                     
 #include <signal.h>                     
@@ -20,14 +20,14 @@ void pipeit(char **incmd, int infd, int outfd, char **outcmd);
 
 
  	int infd;
- 	if((infd=open("i.txt",O_RDONLY))==-1)
- 		perror("open infd: ");
+ 	//if((infd=open("i.txt",O_RDONLY))==-1)
+ 		//perror("open infd: ");
  	int outfd;
- 	if((outfd=open("h.txt",O_WRONLY | O_CREAT))==-1)
+ 	if((outfd=open("h.txt",O_WRONLY | O_CREAT, 0666))==-1)
  		perror("open outfd: ");
  	//outfd=-1;
- 	//infd=-1;
- 	char *incmd[]={"wc",(char *)0};
+ 	infd=-1;
+ 	char *incmd[]={"ls",(char *)0};
  	char *outcmd[]={"wc",(char *)0};
  	pipeit(incmd,infd,outfd,outcmd);
  	printf("main done\n");
