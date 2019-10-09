@@ -1,1 +1,16 @@
 C5 sort
+a.out
+execMq.c
+final_shell.c
+getLine.c
+header.h
+hello.txt
+h.txt
+parser.c
+pipe.c
+README.md
+shell2.c
+shell.c
+shmit.c
+stdout2file.c
+test.c

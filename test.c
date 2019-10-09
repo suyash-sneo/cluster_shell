@@ -31,10 +31,14 @@ int execute(char* command){
 }
 
 void main(){
-    int fd = open("hello.txt", O_CREAT|O_WRONLY, 0666);
-    //printf()
-    close(1);
-    dup(fd);
-    char test[] = "ls";
+    int filedes[2];
+    pipe(filedes);
+    char buf[] = "Suyash Raj is one.";
+    write(filedes[1], buf, 50);
+    close(filedes[1]);
+    close(0);
+    dup(filedes[0]);
+    //printf();
+    char test[] = "wc";
     execute(test);
 }
