@@ -476,6 +476,7 @@ int parser(char *command){
                             flag_out = 1;
                         token = strtok(tempcomm, ">");
                         char* temp = (char*) malloc(strlen(token));
+                        strcpy(temp, token);
                         tempcomm = temp;
                         outfile = p+1;
                         if(flag_out==1)
