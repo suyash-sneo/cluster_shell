@@ -12,6 +12,10 @@
 #include <signal.h>
 #include<pthread.h>
 
+#define BLUE printf("\033[0;34m")
+#define CYAN printf("\033[1;36m")
+#define WHITE printf("\033[0m")
+#define BWHITE printf("\033[1;37m")
 #define MSGQ_PATH "."
 
 typedef struct myMsg{
@@ -585,6 +589,31 @@ void execDaemon(char *comm){            //comm is the command ex- "ls -l" or "ls
 }
 
 int main(){
-    char test[] = "ls >> hello.txt";
-    parser(test);
+    int ret_val;
+    char *s2="\0";
+    //parser("ls | wc");
+    while(1){
+
+        char command[100];
+        CYAN;
+        printf("$ ");
+        WHITE;
+        //gets(command);
+        scanf("%[^\n]",command);
+        strcat(command,s2);
+        if((ret_val = fork())>0){
+            int status;
+            int pid=wait(&status);
+            BWHITE;
+            printf("\nProcess %d terminated ", pid);
+            if(WIFEXITED(status))
+                printf("normally\n");
+            if(WIFSIGNALED(status))
+                printf("by signal\n");
+            WHITE;
+        }
+        else{
+            execute(command);
+        }
+    }
 }

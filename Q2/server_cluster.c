@@ -6,7 +6,18 @@
 
 #define SA struct sockaddr 
 
-
+char* readConfig(){
+	char* nodes[20];
+	char node[15];
+	int i=0;
+	FILE* conf = fopen("config.txt", "r");
+	while(fscanf(conf, "%*s %s\n", node)==1){
+		nodes[i] = (char*)malloc(strlen(node));
+		strcpy(nodes[i], node);
+		i++;
+	}
+	return nodes;
+}
 
 void hnadleClient(int sockfd) 
 { 
