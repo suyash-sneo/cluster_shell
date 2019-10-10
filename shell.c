@@ -47,7 +47,14 @@ void execPipe(char *incomm, int flag_in,int infd,char *outcomm,int flag_out,int 
     int pipefd[count];
     int status;
     int pid[count +1];
-
+    if(outcomm==NULL){
+        if(flag_in !=0)
+            dup2(infd,STDIN_FILENO);
+        if(flag_out !=0)
+            dup2(outfd,STDOUT_FILENO);
+          
+        execute(incomm);
+     }
     if (pipe(&pipefd[0]) == -1) perror("pipe incomm: ");
 
     printf("\npipefd for 1st pipe= %d %d\n", pipefd[0],pipefd[1]);
@@ -472,9 +479,9 @@ int parser(char *command){
                         tempcomm = temp;
                         outfile = p+1;
                         if(flag_out==1)
-                            outfd = open(outfile, O_WRONLY|O_CREAT);
+                            outfd = open(outfile, O_WRONLY|O_CREAT, 0666);
                         else if(flag_out==2)
-                            outfd = open(outfile, O_WRONLY|O_APPEND|O_CREAT);
+                            outfd = open(outfile, O_WRONLY|O_APPEND|O_CREAT, 0666);
                         execPipe(tempcomm, 0, 0, NULL, flag_out, outfd, NULL, -1);
                     }
                     else{
@@ -577,6 +584,6 @@ void execDaemon(char *comm){            //comm is the command ex- "ls -l" or "ls
 }
 
 int main(){
-    char test[] = "ls";
+    char test[] = "ls >> hello.txt";
     parser(test);
 }
