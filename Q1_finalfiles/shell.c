@@ -591,15 +591,13 @@ void execDaemon(char *comm){            //comm is the command ex- "ls -l" or "ls
 int main(){
     int ret_val;
     char *s2="\0";
-    //parser("ls | wc");
     while(1){
 
         char command[100];
         CYAN;
         printf("$ ");
         WHITE;
-        //gets(command);
-        scanf("%[^\n]",command);
+        gets(command);
         strcat(command,s2);
         if((ret_val = fork())>0){
             int status;
@@ -613,7 +611,8 @@ int main(){
             WHITE;
         }
         else{
-            execute(command);
+            parser(command);
         }
+        fflush(stdin);
     }
 }
