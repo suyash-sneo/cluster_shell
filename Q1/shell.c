@@ -11,13 +11,12 @@
 #include<sys/wait.h>
 #include <signal.h>
 #include<pthread.h>
+#include<sys/shm.h>
 
 #define BLUE printf("\033[0;34m")
 #define CYAN printf("\033[1;36m")
 #define WHITE printf("\033[0m")
 #define BWHITE printf("\033[1;37m")
-
-#define COMMAND_BUFSIZE 200
 #define MSGQ_PATH "."
 
 typedef struct myMsg{
@@ -25,6 +24,13 @@ typedef struct myMsg{
     char msg[1001];
 }myMsg;
 
+
+int execute(char *command);
+void execPipe(char *incomm, int flag_in,int infd,char *outcomm,int flag_out,int outfd,char **comm,int count);
+void execSm(char *incomm, int flag_in, int infd, char **comm, int count);
+void execMq(char* incomm, int flag_in, int infd, char** comm, int count);
+void execDaemon(char *comm);
+int parser(char *comm);
 
 
 int execute(char* command){
@@ -44,25 +50,9 @@ int execute(char* command){
     }
     args[i] = malloc(sizeof(char));
     args[i] = 0;
-
-    //.............Executing bg..............
-    if(strcmp(comm, "bg")==0){
-        int j=1;
-        while(args[j]!=0)
-            if(kill(args[j], SIGCONT)<0)
-                printf("%d not found.\n", args[j]);
-    }
-
-    //............Executing fg...............
-    else if(strcmp(comm, "fg")==0){
-        if(kill(args[1], SIGCONT)<0)
-            printf("%d not found.\n", args[1]);
-        else{
-            tcsetpgrp(0,getpid());
-        }
-    }
-
     execvp(comm, args);
+    printf("Please enter correct command\n");
+    exit(0);
 }
 
 void execPipe(char *incomm, int flag_in,int infd,char *outcomm,int flag_out,int outfd,char **comm,int count){
@@ -85,6 +75,7 @@ void execPipe(char *incomm, int flag_in,int infd,char *outcomm,int flag_out,int 
 
     if((pid[0]=fork())==0){
         setpgid(0,0);
+        printf("pid 1=%d",pid[0]);
         close(pipefd[0]);
         if(flag_in !=0){
             dup2(infd,STDIN_FILENO);
@@ -95,10 +86,11 @@ void execPipe(char *incomm, int flag_in,int infd,char *outcomm,int flag_out,int 
     }
     
 
-    wait(&status);
+    int waitret=wait(&status);
+    printf("waitret 1=%d\t",waitret);
     close(pipefd[1]);
     printf("pid :%d\tstatus :%d\n",pid[0],status);
-    printf("incomm done\n");
+    //printf("incomm done\n");
 
     int  i=1;
     while(count-1>0){
@@ -121,7 +113,7 @@ void execPipe(char *incomm, int flag_in,int infd,char *outcomm,int flag_out,int 
             //execvp(comm[i-1][0],comm[i-1]);
         }
         
-        wait(&status);
+        //waitret=wait(&status);
         printf("comm %d done\n",i-1);
         printf("pid :%d\tstatus :%d\n",pid[i],status);
         close(pipefd[2*(i-1)]);
@@ -130,7 +122,7 @@ void execPipe(char *incomm, int flag_in,int infd,char *outcomm,int flag_out,int 
         i++;
     }
 
-    printf("comm done\n\n");
+    //printf("comm done\n\n");
 
 
     if((pid[i]=fork())==0){
@@ -145,8 +137,9 @@ void execPipe(char *incomm, int flag_in,int infd,char *outcomm,int flag_out,int 
         //execvp(outcmd[0],outcmd);
     }
 
-    wait(&status);
-    printf("\npid :%d\tstatus :%d\n",pid[i],status);
+    waitret=wait(&status);
+    printf("waitret 2=%d\n",waitret);
+    printf("\npid :%d\tstatus :%d\n",waitret,status);
     close(pipefd[2*(i-1)]);
     //close(pipefd[1]);
     //wait(&status);
@@ -201,9 +194,9 @@ void execSm(char *incomm, int flag_in, int infd, char **comm, int count){
         exit(0);
     }
 
-    wait(&status);
-    printf("Child 0 pid: %d\tstatus: %d\n",pid[0],status);
-    printf("incomm done\n");
+    int retval=wait(&status);
+    printf("Child 0 pid: %d\tstatus: %d\n",retval,status);
+    printf("%s done\n",incomm);
 
 
     int i=1;
@@ -250,19 +243,19 @@ void execSm(char *incomm, int flag_in, int infd, char **comm, int count){
 
             }
             close(pipefd[1]);
-            wait(&status2);
-            printf("Child %d-1 pid :%d\tstatus: %d\n",i,pid2,status2);
+            int retval2=wait(&status2);
+            printf("Child %d-1 pid :%d\tstatus: %d\n",i,retval2,status2);
             exit(0);
         }
-        wait(&status);
-        printf("\nChild %d pid: %d\tstatus: %d\n",i,pid[i],status);
+        int retval3=wait(&status);
+        printf("\nChild %d pid: %d\tstatus: %d\n",i,retval3,status);
         count--;
         i++;
     }
 
     //wait(&status);
     shmctl(shmid,IPC_RMID,NULL); 
-    printf("\nshm removed\n");
+    printf("\nShared Memory Removed\n");
     //if(WIFSIGNALED(status))
     //   printf("Child 2 terminated by signal\n");
     
@@ -271,27 +264,18 @@ void execSm(char *incomm, int flag_in, int infd, char **comm, int count){
 void execMq(char* incomm, int flag_in, int infd, char** comm, int count){
     int retval, i=count;
     int msqid = msgget(ftok(MSGQ_PATH, 26), IPC_CREAT|0666);
+    printf("Mesage Queue ID: %d\n", msqid);
     retval = fork();
-    while(retval!=0 && --i>0)
-        retval = fork();
     
-    if(retval!=0){
+
+    if(retval==0){
+    
         myMsg list[count];
         int pipes[2];
         pipe(pipes);
         int retval2 = fork();
-        if(retval2!=0){
-            char BUF[1001];
-            wait(NULL);
-            close(pipes[1]);
-            read(pipes[0], BUF, 1000);
-            for(int j=0; j<count; j++){
-                list[j].mtype =1;
-                strcpy(list[j].msg, BUF);
-                msgsnd(msqid, &list[j], strlen(list[j].msg), 0);
-            }
-        }
-        else{
+    
+        if(retval2==0){
             if(flag_in==1){
                 close(0);
                 dup(infd);
@@ -301,21 +285,57 @@ void execMq(char* incomm, int flag_in, int infd, char** comm, int count){
             dup(pipes[1]);
             execute(incomm);
         }
+    
+        else{
+            char BUF[1001];
+            wait(NULL);
+            close(pipes[1]);
+            read(pipes[0], BUF, 1000);
+            for(int j=0; j<count; j++){
+                list[j].mtype =1;
+                strcpy(list[j].msg, BUF);
+                msgsnd(msqid, &list[j], strlen(list[j].msg), 0);
+            }
+        exit(0);
+        }
+
     }
     else{
-        char BUF2[1000];
-        char * myComm;
-        myMsg info;
-        int filedes[2];
-        pipe(filedes);
-        msgrcv(msqid, (void*)&info, 1000, 0, 0);
-        write(filedes[1], info.msg, strlen(info.msg)-6);
-        close(filedes[1]);
-        close(0);
-        dup(filedes[0]);
-        myComm = (char*)malloc(strlen(comm[i-1]));
-        strcpy(myComm, comm[i-1]);
-        execute(myComm);
+        wait(NULL);
+
+        while(i-->0){
+            retval = fork();
+            
+            if(retval==0){
+                char BUF2[1000];
+                char * myComm;
+                myMsg info;
+                int filedes[2];
+                pipe(filedes);
+                msgrcv(msqid, (void*)&info, 1000, 0, 0);
+                write(filedes[1], info.msg, strlen(info.msg));
+                close(filedes[1]);
+               
+                int r = fork();
+            
+                if(r==0){
+                    close(0);
+                    dup(filedes[0]);
+                    myComm = (char*)malloc(strlen(comm[i]));
+                    strcpy(myComm, comm[i]);
+                    execute(myComm);
+                }
+            
+                wait(NULL);
+                close(filedes[0]);
+                exit(0);
+            }
+            
+            else
+                wait(NULL);
+                msgctl(msqid, IPC_RMID, NULL);
+                printf("Message Queue Removed\n");
+        }    
     }
 }
 
@@ -328,6 +348,17 @@ int parser(char *command){
     char* token;
     int infd = 0, outfd = 1, flag = 0, flag_in = 0, flag_out = 0;;
     int count=0;
+
+    char* t = (char*)malloc(strlen(command));
+    strcpy(t, command);
+    token = strtok(t, " ");
+    if(strcmp(token, "daemonize")==0){
+        token = strtok(NULL, " ");
+        //printf("calling daemon\n");
+        //printf("token: %s\n",token);
+        execDaemon((char *)token);
+        return 0;
+    }
 
     //Detecting and redirecting control for message queues
     p = strstr(command2, "#");
@@ -389,7 +420,7 @@ int parser(char *command){
             while(token!=NULL){
                 comm[i] = (char*)malloc(sizeof(token));
                 strcpy(comm[i], token);
-                printf("comms is %s\n", comm[i]);
+                //printf("comms is %s\n", comm[i]);
                 token = strtok(NULL, ",");
                 i++;
             }
@@ -441,7 +472,7 @@ int parser(char *command){
                 while(token!=NULL){
                     comm[i] = (char*)malloc(strlen(token));
                     strcpy(comm[i], token);
-                    printf("comms is %s\n", comm[i]);
+                    //printf("comms is %s\n", comm[i]);
                     token = (strtok(NULL, "|"));
                     i++;
                 }
@@ -466,7 +497,7 @@ int parser(char *command){
                 if(flag_in!=0)
                     infd = open(infile, O_RDONLY);
                 if(flag_out==1)
-                    outfd = open(outfile, O_WRONLY|O_CREAT);
+                    outfd = open(outfile, O_WRONLY|O_CREAT|O_TRUNC);
                 else if(flag_out==2)
                     outfd = open(outfile, O_WRONLY|O_APPEND|O_CREAT);
                 /////////////////////////////////////////////////////////////////////////////
@@ -610,60 +641,20 @@ void execDaemon(char *comm){            //comm is the command ex- "ls -l" or "ls
 
 int main(){
     int ret_val;
-    char *s2="\0";    
-    
-    signal(SIGQUIT, SIG_IGN);
-    signal(SIGTSTP, SIG_IGN);
-    signal(SIGTTIN, SIG_IGN);
-    
+    char *s2="\0";
     while(1){
-        int flag=0;
+
+        char command[100];
         CYAN;
         printf("$ ");
-
-        int bufsize = COMMAND_BUFSIZE;
-        int position = 0;
-        char *buffer = malloc(sizeof(char) * bufsize);
-        int c;
-
-        if (!buffer) {
-            fprintf(stderr, "mysh: allocation error\n");
-            exit(EXIT_FAILURE);
-        }
-
-        while (1) {
-            c = getchar();
-            if(c == EOF || c == '\n') {
-                buffer[position] = '\0';
-                break;
-            } 
-            else{
-                buffer[position] = c;
-            }
-            position++;
-            if(position >= bufsize) {
-                bufsize += COMMAND_BUFSIZE;
-                buffer = realloc(buffer, bufsize);
-                if(!buffer) {
-                    fprintf(stderr, "mysh: allocation error\n");
-                    exit(EXIT_FAILURE);
-                }
-            }
-        }
-        char* command = buffer;
         WHITE;
-        for(int i = strlen(command)-1; i>=0; i--){
-            if(command[i] == '&'){
-                flag=1;
-                command[i] = '\0';
-                break;
-            }
-        }
+        gets(command);
+        strcat(command,s2);
         if((ret_val = fork())>0){
             int status;
             int pid=wait(&status);
             BWHITE;
-            printf("\nProcess %d terminated ", pid);
+            printf("\nProcess %d terminated \n", pid);
             if(WIFEXITED(status))
                 printf("normally\n");
             if(WIFSIGNALED(status))
@@ -671,11 +662,9 @@ int main(){
             WHITE;
         }
         else{
-            if(flag==0)
-                setpgid(getpid(), 0);
-            else
-                setsid();
             parser(command);
+            exit(0);
         }
+        fflush(stdin);
     }
 }
