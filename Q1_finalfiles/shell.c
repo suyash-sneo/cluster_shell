@@ -16,6 +16,8 @@
 #define CYAN printf("\033[1;36m")
 #define WHITE printf("\033[0m")
 #define BWHITE printf("\033[1;37m")
+
+#define COMMAND_BUFSIZE 200
 #define MSGQ_PATH "."
 
 typedef struct myMsg{
@@ -42,6 +44,24 @@ int execute(char* command){
     }
     args[i] = malloc(sizeof(char));
     args[i] = 0;
+
+    //.............Executing bg..............
+    if(strcmp(comm, "bg")==0){
+        int j=1;
+        while(args[j]!=0)
+            if(kill(args[j], SIGCONT)<0)
+                printf("%d not found.\n", args[j]);
+    }
+
+    //............Executing fg...............
+    else if(strcmp(comm, "fg")==0){
+        if(kill(args[1], SIGCONT)<0)
+            printf("%d not found.\n", args[1]);
+        else{
+            tcsetpgrp(0,getpid());
+        }
+    }
+
     execvp(comm, args);
 }
 
@@ -590,15 +610,55 @@ void execDaemon(char *comm){            //comm is the command ex- "ls -l" or "ls
 
 int main(){
     int ret_val;
-    char *s2="\0";
+    char *s2="\0";    
+    
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGTTIN, SIG_IGN);
+    
     while(1){
-
-        char command[100];
+        int flag=0;
         CYAN;
         printf("$ ");
+
+        int bufsize = COMMAND_BUFSIZE;
+        int position = 0;
+        char *buffer = malloc(sizeof(char) * bufsize);
+        int c;
+
+        if (!buffer) {
+            fprintf(stderr, "mysh: allocation error\n");
+            exit(EXIT_FAILURE);
+        }
+
+        while (1) {
+            c = getchar();
+            if(c == EOF || c == '\n') {
+                buffer[position] = '\0';
+                break;
+            } 
+            else{
+                buffer[position] = c;
+            }
+            position++;
+            if(position >= bufsize) {
+                bufsize += COMMAND_BUFSIZE;
+                buffer = realloc(buffer, bufsize);
+                if(!buffer) {
+                    fprintf(stderr, "mysh: allocation error\n");
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
+        char* command = buffer;
         WHITE;
-        gets(command);
-        strcat(command,s2);
+        for(int i = strlen(command)-1; i>=0; i--){
+            if(command[i] == '&'){
+                flag=1;
+                command[i] = '\0';
+                break;
+            }
+        }
         if((ret_val = fork())>0){
             int status;
             int pid=wait(&status);
@@ -611,8 +671,11 @@ int main(){
             WHITE;
         }
         else{
+            if(flag==0)
+                setpgid(getpid(), 0);
+            else
+                setsid();
             parser(command);
         }
-        fflush(stdin);
     }
 }
