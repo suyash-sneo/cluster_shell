@@ -6,32 +6,71 @@
 
 #define SA struct sockaddr 
 
-char* readConfig(){
-	char* nodes[20];
-	char node[15];
-	int i=0;
-	FILE* conf = fopen("config.txt", "r");
-	while(fscanf(conf, "%*s %s\n", node)==1){
-		nodes[i] = (char*)malloc(strlen(node));
-		strcpy(nodes[i], node);
-		i++;
-	}
-	return nodes;
-}
 
-void hnadleClient(int sockfd) 
+
+void hnadleClient(int connfd) 
 { 
-	char buff[MAX]; 
+	char buff[1000]; 
 	int n; 
-	
+	char nodes[20];
+	char **commands;
+
 	for (;;) { 
 		bzero(buff, MAX); 
+		int max=0;
+		fd_set rfds;
 
-		// read the message from client and copy it in buffer 
-		read(sockfd, buff, sizeof(buff)); 
+		FD_ZERO(&rfds);
+
+		for(int i=0;i<20;i++){
+			max=max<connfd[i]?connfd[i]:max;
+			FD_SET(connfd[i],&rfds);
+		}
+
+		if(select(max+1,&rfds,NULL,NULL,NULL)==-1){
+			perror("select in server: ");
+			exit(0);
+		}
+		int gg;
+		for(gg=0;gg<20;gg++){
+			if(FD_ISSET(connfd[gg],&rfds))
+				break;
+		}
+
+		if(read(connfd[gg],nodes,20)==-1){
+			perror("server read 1:");
+			exit(0);
+		}
+
+		if(read(connfd[gg],*connfd,600)==-1){
+			perror("server read 2: ");
+			exit(0);
+		} 
 		// print buffer which contains the client contents 
-		printf("From client: %s\t To client : ", buff); 
-		bzero(buff, MAX); 
+		//printf("From client: %s\t To client : ", buff); 
+		
+
+		if(nodes[0]=='*'){				// n*. case 
+
+			char strtemp[30];
+			for(int i=0;i<20;i++){
+				strcpy(strtemp,*(commands+30*i),30);
+				if(write(connfd[i],strtemp,30)==-1){
+					perror("server write *:");
+					exit(0);
+				}
+				read(connfd[i],buff,1000);
+				write(connfd[gg],)
+			}
+
+		}
+
+
+		for(int i=0;i<20 && nodes[i];i++){
+
+
+		}
+
 		n = 0; 
 		// copy server message in the buffer 
 		while ((buff[n++] = getchar()) != '\n') 
@@ -44,60 +83,69 @@ void hnadleClient(int sockfd)
 		if (strncmp("exit", buff, 4) == 0) { 
 			printf("Server Exit...\n"); 
 			break; 
-		} 
+		}
+
 	} 
 } 
 
 // Driver function 
 int main() 
 { 
-	int sockfd, connfd, len; 
-	struct sockaddr_in servaddr, cli; 
+	if(argc!=2){
+		printf("usage ./a.out <IP>");
+	}
 
+
+	int sockfd, connfd[20], char *ip[20],len; 
+	struct sockaddr_in servaddr, cli[20]; 
+
+	readfromfile(ip);				//read ips from file corresponding to nodes
 	// socket create and verification 
+
+	
+
 	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
 	if (sockfd == -1) { 
-		printf("socket creation failed...\n"); 
+		perror("socket server failed\n"); 
 		exit(0); 
 	} 
-	else
-		printf("Socket successfully created..\n"); 
+	printf("Socket successfully created\n"); 
 	bzero(&servaddr, sizeof(servaddr)); 
 
 	// assign IP, PORT 
 	servaddr.sin_family = AF_INET; 
-	servaddr.sin_addr.s_addr = htonl(INADDR_ANY); 
-	servaddr.sin_port = htons(PORT); 
+	servaddr.sin_addr.s_addr = htonl(argv[1]); 
+	servaddr.sin_port = htons(12345); 
 
 	// Binding newly created socket to given IP and verification 
 	if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) { 
-		printf("socket bind failed...\n"); 
+		perror("server bind failed: "); 
 		exit(0); 
 	} 
-	else
-		printf("Socket successfully binded..\n"); 
+	printf("Socket successfully binded\n"); 
 
 	// Now server is ready to listen and verification 
 	if ((listen(sockfd, 5)) != 0) { 
-		printf("Listen failed...\n"); 
+		perror("Listen failed\n"); 
 		exit(0); 
 	} 
-	else
-		printf("Server listening..\n"); 
-	len = sizeof(cli); 
+	
+	printf("Server listening\n"); 
+	len = sizeof(cli[0]); 
 
-	// Accept the data packet from client and verification 
-	connfd = accept(sockfd, (SA*)&cli, &len); 
-	if (connfd < 0) { 
-		printf("server acccept failed...\n"); 
-		exit(0); 
-	} 
-	else
-		printf("server acccept the client...\n"); 
+	for(int i=0;i<20;i++){		
+		// Accept the data packet from client and verification 
+		connfd[i] = accept(sockfd, (SA*)&cli[i], &len); 
+		if (connfd[i] < 0) { 
+			perror("server acccept failed\n"); 
+			exit(0); 
+		} 
+		
+		printf("server acccepted the client %d\n",i); 
+	}
 
-	// Function for chatting between client and server 
-	func(connfd); 
+	printf("All clients connected\n");
 
-	// After chatting close the socket 
+	hnadleClient(connfd,ip); 
 	close(sockfd); 
 } 
