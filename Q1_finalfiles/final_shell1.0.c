@@ -308,7 +308,14 @@ void execPipe(char *incomm, int flag_in,int infd,char *outcomm,int flag_out,int 
     int pipefd[count];
     int status;
     int pid[count +1];
-
+    if(outcomm==NULL){
+        if(flag_in !=0){
+            dup2(infd,STDIN_FILENO);
+        if(flag_out !=0){
+            dup2(outfd,STDOUT_FILENO);
+          
+        execute(incomm);
+     }
     if (pipe(&pipefd[0]) == -1) perror("pipe incomm: ");
 
     printf("\npipefd for 1st pipe= %d %d\n", pipefd[0],pipefd[1]);
