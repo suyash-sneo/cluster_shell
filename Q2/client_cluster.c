@@ -14,8 +14,9 @@
 
 void parser(char* tempcomm,char **command,char *nodes){
 	
+	int status;
 	command = (char*)malloc(600);
-	strcpy(command, tmepcomm);
+	strcpy(command, tempcomm);
 	char* token, token_2;
 	char* p;
 	p = strstr(command, ".");
@@ -31,8 +32,8 @@ void parser(char* tempcomm,char **command,char *nodes){
 			token = strtok(command, ".");
 			token = strtok(NULL, ".");
 			nodes[0] = '*';
-			commands[0] = char*(malloc(strlen(token));
-			strcpy(commands[0], token);
+			command[0] = (char*)(malloc(strlen(token));
+			strcpy(command[0], token);
 			//send to server
 		}
 		else{
@@ -85,7 +86,7 @@ void send2server(int sockfd)
 		if(FD_ISSET(0,&rfds)==1){			//read from stdin
 			
 			readfromstdin();
-			parser(comm,nodes,commands);
+			parser(incomm,nodes,commands);
 
 			if(nodes[0]=='*'){
 				
@@ -100,14 +101,14 @@ void send2server(int sockfd)
 				for(int i=0;i<19;i++){
 
 					if(read(sockfd,buffer,1000)<=0){
-						perror("read 1 form sockfd:")
+						perror("read 1 form sockfd:");
 						exit(0);
 					}
-					printf("node %d outputs:\n%s\n",buffer);				
+					printf("node %d outputs:\n%s\n",i, buffer);				
 				}
 				printf("my output:\n");
 				int pid,status;
-				(if(pid=fork())==0){
+				if((pid=fork())==0){
 					execute((char *)(*commands));
 				}
 				wait(&status);
@@ -123,7 +124,7 @@ void send2server(int sockfd)
 					exit(0);
 				}
 				if(read(sockfd,buffer,1000)<=0){
-					perror("read 1 form sockfd:")
+					perror("read 1 form sockfd:");
 					exit(0);
 				}
 				printf("%s\n",buffer);
@@ -132,10 +133,17 @@ void send2server(int sockfd)
 
 		else if(FD_ISSET(sockfd,&rfds)==1){		//read from socketfd
 			if(read(sockfd,incomm,30)==-1){
-				perror("read from sockfd 2: ")
+				perror("read from sockfd 2: ");
 			}
-
-			execute(incomm);
+			int retval;
+			if((retval = fork())!=0){
+				wait(&status);
+			}
+			else{
+				close(1);
+				dup(sockfd);
+				execute(incomm);
+			}
 		}
 
 		else{

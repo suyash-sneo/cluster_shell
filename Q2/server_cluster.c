@@ -13,7 +13,7 @@ void hnadleClient(int connfd)
 	char buff[1000]; 
 	int n; 
 	char nodes[20];
-	char **commands;
+	char commands[20][30];
 
 	for (;;) { 
 		bzero(buff, MAX); 
@@ -54,35 +54,28 @@ void hnadleClient(int connfd)
 
 			char strtemp[30];
 			for(int i=0;i<20;i++){
-				strcpy(strtemp,*(commands+30*i),30);
-				if(write(connfd[i],strtemp,30)==-1){
+				if(i==gg)
+					continue;
+				if(write(connfd[i],commands[0],30)==-1){
 					perror("server write *:");
 					exit(0);
 				}
 				read(connfd[i],buff,1000);
-				write(connfd[gg],)
+				write(connfd[gg],buff, 1000);
 			}
 
 		}
-
-
-		for(int i=0;i<20 && nodes[i];i++){
-
-
-		}
-
-		n = 0; 
-		// copy server message in the buffer 
-		while ((buff[n++] = getchar()) != '\n') 
-			; 
-
-		// and send that buffer to client 
-		write(sockfd, buff, sizeof(buff)); 
-
-		// if msg contains "Exit" then server exit and chat ended. 
-		if (strncmp("exit", buff, 4) == 0) { 
-			printf("Server Exit...\n"); 
-			break; 
+		else{
+			write(connfd[0], commands[0], 30);
+			read(connfd[i], buff, 1000);
+			for(int i=0; i<20 && nodes[i]!=-1; i++){
+				bzero(buff, MAX);
+				write(connfd[i], commands[i], 30);
+				write(connfd[i], buff, strlen(buff));
+				read(connfd[i], buff, 1000);
+			}
+			bzero(buff, MAX);
+			write(nodes[gg], buff, strlen(buff));
 		}
 
 	} 
