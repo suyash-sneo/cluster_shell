@@ -140,6 +140,8 @@ void send2server(int sockfd)
 				wait(&status);
 			}
 			else{
+				close(0);
+				dup(sockfd);
 				close(1);
 				dup(sockfd);
 				execute(incomm);
